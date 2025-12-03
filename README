@@ -1,0 +1,129 @@
+
+meta-test-framework Layer
+=========================
+
+This layer provides Yocto integration for the "test-framework" project:
+a modular BSP/PCBA/System automated testing framework designed for
+embedded Linux platforms. The layer includes:
+
+- A git-based recipe (test-framework_git.bb)
+- A launcher installed as "/usr/bin/testfw"
+- Runtime installation under "/opt/test-framework"
+- An example image recipe (core-image-testfw)
+- Optional bbclass for test-framework image extensions
+Dependencies
+The meta-test-framework layer depends on the following upstream layers
+already present in a standard i.MX Yocto BSP environment:
+
+URI: https://git.yoctoproject.org/poky
+branch: kirkstone
+
+URI: https://github.com/openembedded/meta-openembedded.git
+branch: kirkstone
+layers: meta-oe, meta-python, meta-filesystems, meta-networking
+
+URI: NXP i.MX Yocto BSP layers (meta-imx)
+branch: kirkstone-6.1.x or later
+
+You likely already have these layers if you are building NXP’s
+fsl-imx-wayland or fsl-imx-xwayland distro.
+
+## Table of Contents
+ 
+ I.   Adding meta-test-framework to your build
+ II.  Layer contents
+ III. Image recipe integration
+ IV.  Runtime usage
+ V.   Misc / Notes
+
+## I. Adding meta-test-framework to your Yocto build
+
+Clone or place the layer next to your existing BSP layers, then add it:
+
+bitbake-layers add-layer ../meta-test-framework
+
+Verify:
+
+bitbake-layers show-layers
+
+You should see:
+
+meta-test-framework  <path>/meta-test-framework  <priority>
+
+## II. Layer Contents
+
+meta-test-framework/
+├── classes/
+│   └── testfw-image.bbclass
+│
+├── recipes-test-framework/
+│   └── test-framework/
+│       └── test-framework_git.bb
+│
+└── recipes-core/
+    └── images/
+        └── core-image-testfw.bb
+
+### Key Components
+
+### **1. test-framework_git.bb**
+
+Yocto recipe fetching test-framework from GitHub:
+
+-   installs configs/scripts/tests/resources to `/opt/test-framework` 
+-   installs launcher `/usr/bin/testfw`
+-   supports AUTOREV or locked SRCREV
+-   depends only on POSIX shell utilities
+    
+
+### **2. testfw-image.bbclass**
+
+Optional class that adds additional image configuration for test-framework targets.
+
+### **3. core-image-testfw.bb**
+
+Example image extending core-image-weston:
+
+require recipes-graphics/images/core-image-weston.bb
+inherit testfw-image
+IMAGE_INSTALL:append = " test-framework"
+
+## III. Image Recipe Integration
+To include test-framework in your own image:
+
+IMAGE_INSTALL:append = " test-framework"
+
+Or you may use the sample image provided:
+
+bitbake core-image-testfw
+
+This will produce an image containing /usr/bin/testfw.
+
+## IV. Runtime Usage
+After booting the target system:
+
+testfw
+
+This launches:
+
+/opt/test-framework/core/ruuner_menu.sh
+
+Framework folder structure on device:
+
+/opt/test-framework/
+├── configs/
+├── core /
+├── scripts/
+├── tests/
+└── tests_assets/
+
+## V. Misc / Notes
+-   The launcher uses **#!/bin/sh** to ensure compatibility with BusyBox-based systems.  
+-   If developing locally, devtool workflows are supported:
+
+devtool add test-framework <git-url>
+devtool modify test-framework
+devtool reset test-framework
+
+-   Ensure internet access when building, as the recipe pulls from GitHub.
+-   To lock version for production, replace `SRCREV = "${AUTOREV}"` with a pinned commit hash.
